@@ -1,8 +1,8 @@
 export { Container } from "./container";
 export {
-  Inject,
   Injectable,
-  InjectableAsyncFactory,
+  Inject,
   InjectableFactory,
+  InjectableAsyncFactory,
 } from "./decorators";
 export { Scope } from "./types";

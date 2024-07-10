@@ -1,14 +1,17 @@
 import { Container } from "./container";
 import { Scope } from "./types";
 
-const container = new Container();
+const container = Container.getInstance();
 
 export function Injectable(
   name: string,
-  scope: Scope = "Transient"
+  scope: Scope = "Transient",
+  dependencies?: string[],
+  onInit?: (instance: any) => void | Promise<void>,
+  onDestroy?: (instance: any) => void | Promise<void>
 ): ClassDecorator {
   return function (target: any) {
-    container.register(name, target, scope);
+    container.register(name, target, scope, dependencies, onInit, onDestroy);
   };
 }
 
