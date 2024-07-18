@@ -4,37 +4,37 @@
 
 ## Funcionalidades
 
-- **Auto-Scanning de Classes Decoradas**: Registre automaticamente classes com decoradores.
-- **Logger Integrado**: Log integrado para fácil rastreamento e depuração.
-- **Configuração Global**: Configure o contêiner globalmente para atender às suas necessidades.
-- **Decoradores para Propriedades e Métodos**: Injete dependências diretamente em propriedades e métodos.
-- **Suporte a Módulos e Plugins**: Extenda facilmente a funcionalidade do contêiner.
-- **Resolução de Ciclo de Dependências**: Evite problemas com dependências circulares.
-- **Suporte a Async/Await**: Suporte completo para resolução de dependências assíncronas.
+- **Auto-Scanning de classes decoradas**: registre automaticamente classes com decoradores.
+- **Logger integrado**: log integrado para fácil rastreamento e depuração.
+- **Configuração global**: configure o contêiner globalmente para atender às suas necessidades.
+- **Decoradores para propriedades e métodos**: injete dependências diretamente em propriedades e métodos.
+- **Suporte a módulos e plugins**: extenda facilmente a funcionalidade do contêiner.
+- **Resolução de ciclo de dependências**: evite problemas com dependências circulares.
+- **Suporte a async/Await**: suporte completo para resolução de dependências assíncronas.
 
 ## Instalação
 
 Para instalar o **Poti**, use npm ou yarn:
 
 ```bash
-npm install poti-ioc
+npm install poti
 ```
 
 ou
 
 ```bash
-yarn add poti-ioc
+yarn add poti
 ```
 
 ## Uso
 
-### Exemplo Básico
+### Exemplo básico
 
-#### Criar Classes com Decoradores
+#### Criar classes com decoradores
 
 ```typescript
 import 'reflect-metadata';
-import { Container, Injectable, Inject } from 'poti-ioc';
+import { Container, Injectable, Inject } from 'poti';
 
 @Injectable('serviceA')
 class ServiceA {
@@ -64,16 +64,16 @@ class ServiceC {
 }
 ```
 
-#### Auto-Scan Classes
+#### Auto-Scan classes
 
 ```typescript
-import { scanClasses } from 'poti-ioc';
+import { scanClasses } from 'poti';
 
 const classesToScan = [ServiceA, ServiceB, ServiceC];
 scanClasses(classesToScan);
 ```
 
-#### Resolver Dependências
+#### Resolver dependências
 
 ```typescript
 const container = Container.getInstance();
@@ -87,12 +87,12 @@ const serviceC = await container.resolve<ServiceC>('serviceC');
 console.log(serviceC.getName());  // Output: ServiceC
 ```
 
-### Uso Avançado
+### Uso avançado
 
-#### Injeção de Dependências em Propriedades
+#### Injeção de dependências em propriedades
 
 ```typescript
-import { InjectProperty } from 'poti-ioc';
+import { InjectProperty } from 'poti';
 
 @Injectable('serviceD')
 class ServiceD {
@@ -105,10 +105,10 @@ class ServiceD {
 }
 ```
 
-#### Injeção de Dependências em Métodos
+#### Injeção de dependências em métodos
 
 ```typescript
-import { InjectMethod } from 'poti-ioc';
+import { InjectMethod } from 'poti';
 
 @Injectable('serviceE')
 class ServiceE {
@@ -119,10 +119,10 @@ class ServiceE {
 }
 ```
 
-#### Usando Módulos e Plugins
+#### Usando módulos e plugins
 
 ```typescript
-import { Container, Module } from 'poti-ioc';
+import { Container, Module } from 'poti';
 
 class MyModule implements Module {
   register(container: Container): void {
@@ -135,7 +135,7 @@ const container = Container.getInstance();
 container.useModule(new MyModule());
 ```
 
-### Configuração Global
+### Configuração global
 
 Você pode configurar o contêiner globalmente para ajustar o comportamento dele conforme necessário.
 
@@ -145,7 +145,7 @@ const container = Container.getInstance({
 });
 ```
 
-## API Reference
+## API reference
 
 ### `@Injectable`
 
