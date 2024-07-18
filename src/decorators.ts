@@ -18,7 +18,10 @@ export function Injectable(
 export function Inject(name: string): PropertyDecorator {
   return function (target: any, propertyKey: string | symbol) {
     Object.defineProperty(target, propertyKey, {
-      get: () => container.resolve(name),
+      get: async () => {
+        const instance = await container.resolve<any>(name);
+        return instance;
+      },
       enumerable: true,
       configurable: true,
     });

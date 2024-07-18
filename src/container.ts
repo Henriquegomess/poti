@@ -1,9 +1,12 @@
+import * as fs from "fs";
+import * as yaml from "js-yaml";
+import path from "path";
 import { AsyncResolver } from "./async-resolver";
 import { CacheManager } from "./caching";
 import { ConfigManager } from "./config";
 import { EventEmitter } from "./events";
 import { FaultTolerance } from "./fault-tolerance";
-import { logError, logInfo } from "./logging";
+import { logError } from "./logging";
 import { Middleware, applyMiddlewares } from "./middleware";
 import { Profiler } from "./profiler";
 import { SecurityManager } from "./security";
@@ -35,6 +38,7 @@ export class Container {
   private transactionManager = new TransactionManager();
   private asyncResolver = new AsyncResolver();
   private parent: Container | null = null;
+  private logger: (message: string) => void = console.log;
 
   private static instance: Container;
 
@@ -60,7 +64,7 @@ export class Container {
     onDestroy?: (instance: T) => void | Promise<void>
   ): void {
     this.securityManager.validateType(name);
-    logInfo(`Registering dependency: ${name}`);
+    this.logger(`Registering dependency: ${name}`);
     this.dependencies.set(name, {
       implementation,
       scope,
@@ -76,7 +80,7 @@ export class Container {
     scope: Scope = "Transient"
   ): void {
     this.securityManager.validateType(name);
-    logInfo(`Registering factory: ${name}`);
+    this.logger(`Registering factory: ${name}`);
     this.dependencies.set(name, { implementation: null, factory, scope });
   }
 
@@ -86,13 +90,13 @@ export class Container {
     scope: Scope = "Transient"
   ): void {
     this.securityManager.validateType(name);
-    logInfo(`Registering async factory: ${name}`);
+    this.logger(`Registering async factory: ${name}`);
     this.dependencies.set(name, { implementation: null, factory, scope });
   }
 
   registerValue<T>(name: string, value: T): void {
     this.securityManager.validateType(name);
-    logInfo(`Registering value: ${name}`);
+    this.logger(`Registering value: ${name}`);
     this.dependencies.set(name, {
       implementation: null,
       factory: () => value,
@@ -113,40 +117,65 @@ export class Container {
     this.contextProviders.push(provider);
   }
 
-  loadConfig(configFilePath: string): void {
-    this.configManager = new ConfigManager(configFilePath);
+  loadConfig(
+    configFilePath: string,
+    environment: string = "development"
+  ): void {
+    const ext = path.extname(configFilePath).toLowerCase();
+    let config: any;
+
+    if (ext === ".json") {
+      config = JSON.parse(
+        fs.readFileSync(path.resolve(configFilePath), "utf-8")
+      );
+    } else if (ext === ".yaml" || ext === ".yml") {
+      config = yaml.load(
+        fs.readFileSync(path.resolve(configFilePath), "utf-8")
+      );
+    } else {
+      throw new Error(
+        "Unsupported config file format. Please use JSON or YAML."
+      );
+    }
+
+    const envConfig = config[environment] || {};
+    for (const [key, value] of Object.entries(envConfig)) {
+      this.registerValue(key, value);
+    }
   }
 
   async resolve<T>(name: string, context: any = {}): Promise<T> {
-    this.securityManager.validateType(name);
-    logInfo(`Resolving dependency: ${name}`);
+    const sanitizedKey = this.sanitizeInput(name);
+    this.securityManager.validateType(sanitizedKey);
+    this.logger(`Resolving dependency: ${sanitizedKey}`);
     const dependency =
-      this.dependencies.get(name) || this.parent?.dependencies.get(name);
+      this.dependencies.get(sanitizedKey) ||
+      this.parent?.dependencies.get(sanitizedKey);
     if (!dependency) {
-      const errorMessage = `Dependency not found: ${name}`;
+      const errorMessage = `Dependency not found: ${sanitizedKey}`;
       logError(errorMessage);
       throw new Error(errorMessage);
     }
 
-    this.profiler.start(name);
+    this.profiler.start(sanitizedKey);
 
-    const instance = await this.faultTolerance.retry(async () => {
+    const instance: T = await this.faultTolerance.retry(async () => {
       if (dependency.scope === "Singleton") {
-        if (!this.singletons.has(name)) {
+        if (!this.singletons.has(sanitizedKey)) {
           const instance = await this.createInstance(dependency, context);
-          this.singletons.set(name, instance);
+          this.singletons.set(sanitizedKey, instance);
           await this.executeLifecycleHook(dependency.onInit, instance);
         }
-        return this.singletons.get(name);
+        return this.singletons.get(sanitizedKey);
       }
 
       if (dependency.scope === "Request") {
-        if (!this.requestCache.has(name)) {
+        if (!this.requestCache.has(sanitizedKey)) {
           const instance = await this.createInstance(dependency, context);
-          this.requestCache.set(name, instance);
+          this.requestCache.set(sanitizedKey, instance);
           await this.executeLifecycleHook(dependency.onInit, instance);
         }
-        return this.requestCache.get(name);
+        return this.requestCache.get(sanitizedKey);
       }
 
       const instance = await this.createInstance(dependency, context);
@@ -154,7 +183,7 @@ export class Container {
       return instance;
     });
 
-    this.profiler.end(name);
+    this.profiler.end(sanitizedKey);
 
     return instance;
   }
@@ -237,5 +266,25 @@ export class Container {
 
   rollbackTransaction(transactionId: string): void {
     this.transactionManager.rollbackTransaction(transactionId);
+  }
+
+  validateDependencies(): void {
+    for (const [name, dependency] of this.dependencies.entries()) {
+      if (!dependency.implementation && !dependency.factory) {
+        throw new Error(`Invalid dependency configuration: ${name}`);
+      }
+    }
+  }
+
+  sanitizeInput(input: string): string {
+    return input.replace(/[^a-zA-Z0-9_]/g, "");
+  }
+
+  registerCached<T>(name: string, value: T): void {
+    this.cacheManager.set(name, value);
+  }
+
+  getCached<T>(name: string): T | undefined {
+    return this.cacheManager.get(name);
   }
 }
