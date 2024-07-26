@@ -3,6 +3,20 @@ import { hideBin } from "yargs/helpers";
 import yargs from "yargs/yargs";
 import { Container } from "./container";
 
+async function registerDependency(
+  name: string,
+  path: string,
+  container: Container
+) {
+  try {
+    const dependency = require(path);
+    container.register(name, dependency);
+    console.log(`Registered ${name} from ${path}`);
+  } catch (error) {
+    console.error(`Failed to register ${name} from ${path}: ${error}`);
+  }
+}
+
 async function main() {
   const argv = await yargs(hideBin(process.argv))
     .command("register <name> <path>", "Register a new dependency", (yargs) => {
@@ -25,13 +39,13 @@ async function main() {
     typeof argv.name === "string" &&
     typeof argv.path === "string"
   ) {
-    const dependency = require(argv.path);
-    container.register(argv.name, dependency);
-    console.log(`Registered ${argv.name} from ${argv.path}`);
+    await registerDependency(argv.name, argv.path, container);
+  } else {
+    console.error("Invalid command or arguments");
   }
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error(`An error occurred: ${err.message}`);
   process.exit(1);
 });
